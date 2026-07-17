@@ -660,16 +660,20 @@ else {
     '<p class="warning">The report was not collected with administrative rights. Some security, event-log, BitLocker, and Group Policy details may be incomplete.</p>'
 }
 
-$body = @"
-<header>
-    <h1>Windows System Information Report</h1>
-    <p class="meta"><strong>Computer:</strong> $computerName</p>
-    <p class="meta"><strong>Generated:</strong> $($generatedAt.ToString('yyyy-MM-dd HH:mm:ss'))</p>
-    <p class="meta"><strong>User:</strong> $([System.Net.WebUtility]::HtmlEncode($currentUser))</p>
-    $adminNotice
-</header>
-$($sections -join "`r`n")
-"@
+$encodedComputerName = [System.Net.WebUtility]::HtmlEncode($computerName)
+$encodedCurrentUser = [System.Net.WebUtility]::HtmlEncode($currentUser)
+$formattedGeneratedAt = $generatedAt.ToString('yyyy-MM-dd HH:mm:ss')
+
+$body = @(
+    '<header>'
+    '    <h1>Windows System Information Report</h1>'
+    "    <p class=`"meta`"><strong>Computer:</strong> $encodedComputerName</p>"
+    "    <p class=`"meta`"><strong>Generated:</strong> $formattedGeneratedAt</p>"
+    "    <p class=`"meta`"><strong>User:</strong> $encodedCurrentUser</p>"
+    "    $adminNotice"
+    '</header>'
+    ($sections -join [Environment]::NewLine)
+) -join [Environment]::NewLine
 
 $html = ConvertTo-Html -Title "System Information - $computerName" -Head $css -Body $body
 $html | Set-Content -Path $htmlPath -Encoding UTF8
