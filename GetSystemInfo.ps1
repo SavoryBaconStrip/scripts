@@ -667,10 +667,10 @@ $formattedGeneratedAt = $generatedAt.ToString('yyyy-MM-dd HH:mm:ss')
 $body = @(
     '<header>'
     '    <h1>Windows System Information Report</h1>'
-    "    <p class=`"meta`"><strong>Computer:</strong> $encodedComputerName</p>"
-    "    <p class=`"meta`"><strong>Generated:</strong> $formattedGeneratedAt</p>"
-    "    <p class=`"meta`"><strong>User:</strong> $encodedCurrentUser</p>"
-    "    $adminNotice"
+    ('    <p class="meta"><strong>Computer:</strong> {0}</p>' -f $encodedComputerName)
+    ('    <p class="meta"><strong>Generated:</strong> {0}</p>' -f $formattedGeneratedAt)
+    ('    <p class="meta"><strong>User:</strong> {0}</p>' -f $encodedCurrentUser)
+    $adminNotice
     '</header>'
     ($sections -join [Environment]::NewLine)
 ) -join [Environment]::NewLine
