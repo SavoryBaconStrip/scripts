@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Collects a detailed Windows system-information report.
 
@@ -121,7 +121,7 @@ function Get-SafeCimInstance {
         return Get-CimInstance -Namespace $Namespace -ClassName $ClassName -ErrorAction Stop
     }
     catch {
-        Write-Warning "Unable to query ${ClassName}: $($_.Exception.Message)"
+        Write-Warning "Unable to query $ClassName: $($_.Exception.Message)"
         return @()
     }
 }
@@ -257,14 +257,59 @@ $ipConfig = @()
 try {
     if (Get-Command Get-NetIPConfiguration -ErrorAction SilentlyContinue) {
         $ipConfig = Get-NetIPConfiguration -Detailed -ErrorAction Stop | ForEach-Object {
+            $config = $_
+
+            $ipv4 = @(
+                $config.IPv4Address |
+                    ForEach-Object {
+                        if ($_ -is [string]) { $_ }
+                        elseif ($_.PSObject.Properties['IPAddress']) { $_.IPAddress }
+                        else { [string]$_ }
+                    } |
+                    Where-Object { $_ }
+            )
+
+            $ipv6 = @(
+                $config.IPv6Address |
+                    ForEach-Object {
+                        if ($_ -is [string]) { $_ }
+                        elseif ($_.PSObject.Properties['IPAddress']) { $_.IPAddress }
+                        else { [string]$_ }
+                    } |
+                    Where-Object { $_ }
+            )
+
+            $gateways = @(
+                $config.IPv4DefaultGateway |
+                    ForEach-Object {
+                        if ($_ -is [string]) { $_ }
+                        elseif ($_.PSObject.Properties['NextHop']) { $_.NextHop }
+                        else { [string]$_ }
+                    } |
+                    Where-Object { $_ }
+            )
+
+            $dnsServers = @(
+                $config.DNSServer |
+                    ForEach-Object {
+                        if ($_.PSObject.Properties['ServerAddresses']) {
+                            $_.ServerAddresses
+                        }
+                        else {
+                            [string]$_
+                        }
+                    } |
+                    Where-Object { $_ }
+            )
+
             [pscustomobject]@{
-                InterfaceAlias       = $_.InterfaceAlias
-                InterfaceDescription = $_.InterfaceDescription
-                NetProfile           = $_.NetProfile.Name
-                IPv4Address          = ($_.IPv4Address.IPAddress -join ', ')
-                IPv6Address          = ($_.IPv6Address.IPAddress -join ', ')
-                IPv4Gateway          = ($_.IPv4DefaultGateway.NextHop -join ', ')
-                DNSServers           = ($_.DNSServer.ServerAddresses -join ', ')
+                InterfaceAlias       = $config.InterfaceAlias
+                InterfaceDescription = $config.InterfaceDescription
+                NetProfile           = if ($config.NetProfile) { $config.NetProfile.Name } else { '' }
+                IPv4Address          = $ipv4 -join ', '
+                IPv6Address          = $ipv6 -join ', '
+                IPv4Gateway          = $gateways -join ', '
+                DNSServers           = $dnsServers -join ', '
             }
         }
     }
@@ -433,13 +478,19 @@ if ($IncludeInstalledSoftware) {
     )
 
     foreach ($path in $uninstallPaths) {
+        $parentPath = $path.TrimEnd('\*')
+
+        if (-not (Test-Path -LiteralPath $parentPath)) {
+            continue
+        }
+
         try {
-            $software += Get-ItemProperty -Path $path -ErrorAction Stop |
+            $software += Get-ItemProperty -Path $path -ErrorAction SilentlyContinue |
                 Where-Object { $_.DisplayName } |
                 Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallLocation
         }
         catch {
-            Write-Warning "Unable to query software path $path"
+            Write-Verbose "Unable to query software path $path`: $($_.Exception.Message)"
         }
     }
 
