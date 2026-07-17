@@ -121,7 +121,7 @@ function Get-SafeCimInstance {
         return Get-CimInstance -Namespace $Namespace -ClassName $ClassName -ErrorAction Stop
     }
     catch {
-        Write-Warning "Unable to query $ClassName: $($_.Exception.Message)"
+        Write-Warning "Unable to query ${ClassName}: $($_.Exception.Message)"
         return @()
     }
 }
